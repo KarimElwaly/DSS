@@ -9,8 +9,11 @@ const LINKS = [
   { href: "/catalog", label: "Catalog" },
   { href: "/market", label: "Market Watch" },
   { href: "/listings", label: "Match Review" },
-  { href: "/workbench", label: "SKU Workbench" },
+  { href: "/workbench", label: "Workbench" },
+  { href: "/recommendations", label: "Recommendations" },
+  { href: "/sandbox", label: "Sandbox" },
 ];
+
 
 
 export function NavBar() {

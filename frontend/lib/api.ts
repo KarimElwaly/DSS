@@ -267,3 +267,78 @@ export interface FitReport {
   metrics: Record<string, unknown>;
 }
 
+export interface PriceRecommendation {
+  id: string;
+  product_id: string;
+  sku: string;
+  product_name: string;
+  category_name: string | null;
+  objective: "margin" | "revenue" | "penetration";
+  current_price: number;
+  recommended_price: number;
+  unconstrained_price: number | null;
+  price_floor: number;
+  price_ceiling: number;
+  expected_units: number | null;
+  expected_revenue: number | null;
+  expected_margin: number | null;
+  baseline_revenue: number | null;
+  baseline_margin: number | null;
+  elasticity_used: number | null;
+  confidence: number | null;
+  binding_constraints: string[];
+  rationale: Record<string, unknown>;
+  explanation: string;
+  status: "proposed" | "approved" | "rejected" | "applied" | "expired";
+  created_at: string;
+  decided_at: string | null;
+  decision_note: string;
+}
+
+export interface SimulationQuantiles {
+  revenue: { p05: number; p25: number; p50: number; p75: number; p95: number };
+  margin: { p05: number; p25: number; p50: number; p75: number; p95: number };
+  units: { p05: number; p50: number; p95: number };
+}
+
+export interface SimulationSkuImpact {
+  product_id: string;
+  sku: string;
+  name: string;
+  current_price: number;
+  new_price: number;
+  price_delta_pct: number;
+  units_delta_pct: number;
+  expected_revenue: number;
+  expected_margin: number;
+}
+
+export interface SimulationRun {
+  id: string;
+  name: string;
+  created_at: string;
+  horizon_days: number;
+  scenario: {
+    price_overrides_count: number;
+    competitor_reaction_pct: number;
+    horizon_days: number;
+    overrides: Record<string, number>;
+  };
+  results: {
+    baseline: { revenue: number; margin: number; units: number; margin_rate: number };
+    simulated: { revenue: number; margin: number; units: number; margin_rate: number };
+    delta: {
+      revenue_abs: number;
+      revenue_pct: number;
+      margin_abs: number;
+      margin_pct: number;
+      units_abs: number;
+      units_pct: number;
+    };
+    quantiles: SimulationQuantiles;
+    sku_impacts: SimulationSkuImpact[];
+  };
+  n_monte_carlo: number;
+}
+
+

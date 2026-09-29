@@ -24,13 +24,16 @@ from app.models import (
     Product,
     SalesFact,
 )
-from app.models.enums import AlertStatus
+from app.models.enums import AlertStatus, PricingObjective
 from app.services.elasticity import fit_elasticity_model
 from app.services.forecasting import run_demand_forecast
 from app.services.ingestion import run_ingestion
 from app.services.matching import run_matching
+from app.services.optimization.engine import generate_recommendations
 from app.services.seed import get_default_organization, reset_database, seed_market
+from app.services.simulation.scenario import run_scenario_simulation
 from simulator import MarketSimulator, default_electronics_market
+
 
 
 app = typer.Typer(help="Revenue & Pricing DSS operator CLI.", no_args_is_help=True)
@@ -258,6 +261,104 @@ def forecast_cmd(
         console.print(table)
 
 
+@app.command(name="recommend")
+def recommend_cmd(
+    objective: str = typer.Option("margin", "--objective", "-o", help="Pricing objective: margin, revenue, penetration."),
+    apply_rounding: bool = typer.Option(True, "--rounding/--no-rounding", help="Snap to .99 psychological endings."),
+) -> None:
+    """Generate constrained price recommendations across all products."""
+    obj_enum = PricingObjective(objective.lower())
+    with session_scope() as session:
+        org = get_default_organization(session)
+        console.print(f"[bold]Generating price recommendations (objective={obj_enum.value})...[/]")
+        recs = generate_recommendations(session, org.id, objective=obj_enum, apply_charm_rounding=apply_rounding)
+
+        prods = {p.id: p for p in session.scalars(select(Product))}
+
+        table = Table(title=f"Price Recommendations ({obj_enum.value.capitalize()} Objective)")
+        table.add_column("SKU")
+        table.add_column("Current", justify="right")
+        table.add_column("Recommended", justify="right")
+        table.add_column("Δ Price", justify="right")
+        table.add_column("Exp. Margin Δ", justify="right")
+        table.add_column("Binding Constraints")
+
+        for r in recs:
+            p0 = float(r.current_price)
+            p_rec = float(r.recommended_price)
+            delta_p = (p_rec - p0) / p0
+            color = "green" if delta_p > 0 else ("red" if delta_p < 0 else "white")
+            margin_delta = r.rationale.get("delta_margin_pct", 0.0) * 100
+            m_color = "green" if margin_delta > 0 else "yellow"
+
+            sku = prods[r.product_id].sku if r.product_id in prods else str(r.product_id)[:8]
+            constraints = ", ".join(r.binding_constraints) if r.binding_constraints else "none"
+            table.add_row(
+                sku,
+                f"${p0:.2f}",
+                f"[bold]${p_rec:.2f}[/]",
+                f"[{color}]{delta_p * 100:+.1f}%[/]",
+                f"[{m_color}]{margin_delta:+.1f}%[/]",
+                constraints,
+            )
+        console.print(table)
+        console.print(f"Generated [bold]{len(recs)}[/] proposed recommendations. View and decide in UI.")
+
+
+@app.command(name="simulate")
+def simulate_cmd(
+    name: str = typer.Option("CLI What-if Simulation", "--name", "-n", help="Scenario name."),
+    horizon: int = typer.Option(30, "--horizon", help="Simulation horizon in days."),
+    draws: int = typer.Option(500, "--draws", help="Number of Monte Carlo parameter draws."),
+) -> None:
+    """Run a Monte Carlo what-if scenario across catalog products."""
+    with session_scope() as session:
+        org = get_default_organization(session)
+        products = list(session.scalars(select(Product).where(Product.organization_id == org.id)))
+        # Sample test scenario: 5% price increase across first 3 products
+        overrides = {p.id: float(p.current_price) * 1.05 for p in products[:3]}
+
+        console.print(f"[bold]Running scenario simulation '{name}' with {draws} Monte Carlo draws...[/]")
+        run = run_scenario_simulation(
+            session,
+            org.id,
+            name=name,
+            horizon_days=horizon,
+            price_overrides=overrides,
+            n_monte_carlo=draws,
+        )
+
+        res = run.results
+        delta = res.get("delta", {})
+
+        table = Table(title=f"Simulation Results: {run.name}")
+        table.add_column("Metric")
+        table.add_column("Baseline", justify="right")
+        table.add_column("Simulated (P50)", justify="right")
+        table.add_column("Δ Expected", justify="right")
+
+        table.add_row(
+            "Gross Margin",
+            f"${res['baseline']['margin']:,.2f}",
+            f"${res['simulated']['margin']:,.2f}",
+            f"[green]{delta.get('margin_pct', 0) * 100:+.2f}%[/]",
+        )
+        table.add_row(
+            "Revenue",
+            f"${res['baseline']['revenue']:,.2f}",
+            f"${res['simulated']['revenue']:,.2f}",
+            f"[green]{delta.get('revenue_pct', 0) * 100:+.2f}%[/]",
+        )
+        table.add_row(
+            "Units Sold",
+            f"{res['baseline']['units']:,.1f}",
+            f"{res['simulated']['units']:,.1f}",
+            f"{delta.get('units_pct', 0) * 100:+.2f}%",
+        )
+        console.print(table)
+
+
 if __name__ == "__main__":
     app()
+
 
