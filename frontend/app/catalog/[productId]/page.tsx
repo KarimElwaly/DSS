@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams } from "next/navigation";
+
 import {
   CartesianGrid,
   Line,
@@ -69,15 +71,26 @@ export default function ProductPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="font-mono text-xs text-slate-500">{product.sku}</p>
-        <h1 className="text-xl font-semibold">{product.name}</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          {product.brand}
-          {product.category ? ` · ${product.category.name}` : ""}
-          {product.gtin ? ` · GTIN ${product.gtin}` : ""}
-        </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="font-mono text-xs text-slate-500">{product.sku}</p>
+          <h1 className="text-xl font-semibold">{product.name}</h1>
+          <p className="mt-1 text-sm text-slate-400">
+            {product.brand}
+            {product.category ? ` · ${product.category.name}` : ""}
+            {product.gtin ? ` · GTIN ${product.gtin}` : ""}
+          </p>
+        </div>
+        <div>
+          <Link
+            href={`/workbench/${product.id}`}
+            className="inline-flex items-center gap-1.5 rounded-md bg-sky-600 px-3 py-1.5 text-xs font-medium text-white transition hover:bg-sky-500"
+          >
+            Open in SKU Workbench →
+          </Link>
+        </div>
       </div>
+
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Current price" value={formatMoney(price)} />

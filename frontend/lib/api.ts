@@ -186,3 +186,84 @@ export interface Listing {
     observed_at: string;
   } | null;
 }
+
+export interface ElasticityEstimate {
+  id: string;
+  product_id: string;
+  sku: string;
+  product_name: string;
+  category_name: string | null;
+  method: string;
+  elasticity: number;
+  std_error: number | null;
+  ci_low: number | null;
+  ci_high: number | null;
+  p_value: number | null;
+  r_squared: number | null;
+  n_observations: number;
+  price_variation_cv: number | null;
+  is_reliable: boolean;
+  current_price: number;
+  reference_price: number | null;
+  diagnostics: Record<string, unknown>;
+}
+
+export interface DemandCurvePoint {
+  price: number;
+  units: number;
+  lower_units: number;
+  upper_units: number;
+  revenue: number;
+  margin: number;
+}
+
+export interface CrossElasticity {
+  id: string;
+  related_product_id: string;
+  related_sku: string;
+  related_name: string;
+  elasticity: number;
+  std_error: number | null;
+  p_value: number | null;
+  is_significant: boolean;
+}
+
+export interface SkuWorkbench {
+  product_id: string;
+  sku: string;
+  name: string;
+  brand: string;
+  category_name: string | null;
+  current_price: number;
+  unit_cost: number;
+  min_margin_pct: number;
+  estimate: ElasticityEstimate | null;
+  demand_curve: DemandCurvePoint[];
+  cross_elasticities: CrossElasticity[];
+}
+
+export interface ForecastPoint {
+  target_date: string;
+  predicted_units: number;
+  lower_units: number | null;
+  upper_units: number | null;
+  assumed_price: number | null;
+}
+
+export interface SkuForecast {
+  product_id: string;
+  sku: string;
+  model_run_id: string;
+  horizon_days: number;
+  points: ForecastPoint[];
+  backtest_wape: number | null;
+}
+
+export interface FitReport {
+  model_run_id: string;
+  label: string;
+  created_at: string;
+  n_products: number;
+  metrics: Record<string, unknown>;
+}
+

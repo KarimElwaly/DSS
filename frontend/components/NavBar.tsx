@@ -9,7 +9,9 @@ const LINKS = [
   { href: "/catalog", label: "Catalog" },
   { href: "/market", label: "Market Watch" },
   { href: "/listings", label: "Match Review" },
+  { href: "/workbench", label: "SKU Workbench" },
 ];
+
 
 export function NavBar() {
   const pathname = usePathname();
