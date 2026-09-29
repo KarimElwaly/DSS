@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+
+# Artifacts
+artifacts/
+*.joblib
+*.pkl
+
+# Node
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# Env / secrets
+.env
+.env.local
+*.pem
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Data
+data/*.csv
+data/*.parquet
+!data/samples/

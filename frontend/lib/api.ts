@@ -1,0 +1,188 @@
+"use client";
+
+export const API_BASE =
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8010";
+
+const TOKEN_KEY = "dss.token";
+
+export function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return window.localStorage.getItem(TOKEN_KEY);
+}
+
+export function setToken(token: string): void {
+  window.localStorage.setItem(TOKEN_KEY, token);
+}
+
+export function clearToken(): void {
+  window.localStorage.removeItem(TOKEN_KEY);
+}
+
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
+export async function apiFetch<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T> {
+  const token = getToken();
+  const headers = new Headers(init.headers);
+  headers.set("Content-Type", "application/json");
+  if (token) headers.set("Authorization", `Bearer ${token}`);
+
+  const response = await fetch(`${API_BASE}${path}`, { ...init, headers });
+
+  if (response.status === 401) {
+    clearToken();
+    if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+      window.location.href = "/login";
+    }
+    throw new ApiError("Session expired. Please sign in again.", 401);
+  }
+
+  if (!response.ok) {
+    let detail = `Request failed (${response.status})`;
+    try {
+      const body = await response.json();
+      if (typeof body?.detail === "string") detail = body.detail;
+    } catch {
+      /* non-JSON error body */
+    }
+    throw new ApiError(detail, response.status);
+  }
+
+  return (await response.json()) as T;
+}
+
+export async function login(email: string, password: string): Promise<void> {
+  const response = await fetch(`${API_BASE}/api/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, password }),
+  });
+  if (!response.ok) {
+    throw new ApiError("Invalid email or password.", response.status);
+  }
+  const data = (await response.json()) as { access_token: string };
+  setToken(data.access_token);
+}
+
+// ---------------------------------------------------------------- types
+
+export interface User {
+  id: string;
+  email: string;
+  full_name: string;
+  role: "admin" | "pricing_manager" | "analyst";
+  organization_id: string;
+}
+
+export interface Page<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface Product {
+  id: string;
+  sku: string;
+  name: string;
+  brand: string;
+  gtin: string | null;
+  status: string;
+  current_price: string;
+  unit_cost: string;
+  msrp: string | null;
+  min_margin_pct: string;
+  category: Category | null;
+}
+
+export interface MarketPosition {
+  cheapest_competitor: string | null;
+  cheapest_competitor_price: number | null;
+  competitor_price_index: number | null;
+  price_gap_pct: number | null;
+  n_listings: number;
+  n_out_of_stock: number;
+  observed_at: string | null;
+}
+
+export interface ProductDetail extends Product {
+  description: string;
+  map_price: string | null;
+  max_price_step_pct: string;
+  launch_date: string | null;
+  market: MarketPosition | null;
+}
+
+export interface SalesPoint {
+  sale_date: string;
+  units: number;
+  unit_price: number;
+  unit_cost: number;
+  promo_flag: boolean;
+  revenue: number;
+  gross_margin: number;
+}
+
+export interface CompetitorPricePoint {
+  competitor_slug: string;
+  competitor_name: string;
+  observed_at: string;
+  price: number;
+  landed_price: number;
+  stock_state: string;
+  promo_flag: boolean;
+  url: string;
+}
+
+export interface MarketSnapshot {
+  product_id: string;
+  sku: string;
+  name: string;
+  our_price: number;
+  competitor_price_index: number | null;
+  cheapest_competitor_price: number | null;
+  price_gap_pct: number | null;
+  n_listings: number;
+  n_out_of_stock: number;
+  points: CompetitorPricePoint[];
+}
+
+export interface Listing {
+  id: string;
+  competitor_id: string;
+  competitor_name: string | null;
+  external_id: string;
+  title: string;
+  brand: string;
+  gtin: string | null;
+  url: string;
+  matched_product_id: string | null;
+  matched_product_sku: string | null;
+  match_confidence: number | null;
+  match_method: string;
+  match_status: string;
+  latest: {
+    price: number;
+    shipping_cost: number;
+    landed_price: number;
+    stock_state: string;
+    promo_flag: boolean;
+    observed_at: string;
+  } | null;
+}

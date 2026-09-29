@@ -1,0 +1,88 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "dss-backend"
+version = "0.1.0"
+description = "Revenue & Pricing Decision Support System - backend"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
+    "email-validator>=2.2",
+    "sqlalchemy>=2.0.36",
+    "psycopg[binary]>=3.2",
+    "alembic>=1.14",
+    "pgvector>=0.3.6",
+    "bcrypt>=4.2",
+    "pyjwt>=2.9",
+    "python-multipart>=0.0.12",
+    "numpy>=1.26,<3",
+    # Pinned below 3.0: pandas 3 moves object columns to a new `str` dtype, which
+    # silently breaks comparisons against `str`-mixin Enum members, and the
+    # statsmodels/scikit-learn stack is still settling on its semantics.
+    "pandas>=2.2,<3",
+    "scipy>=1.14",
+    "statsmodels>=0.14",
+    "scikit-learn>=1.5",
+    "joblib>=1.4",
+    "rapidfuzz>=3.10",
+    "apscheduler>=3.10",
+    "httpx>=0.27",
+    "selectolax>=0.3.21",
+    "typer>=0.15",
+    "rich>=13.9",
+    "openpyxl>=3.1",
+]
+
+[project.optional-dependencies]
+# Upgrade path: swaps TfidfSvdEmbedder for a transformer without touching call sites.
+transformers = ["sentence-transformers>=3.2"]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "hypothesis>=6.115",
+    "ruff>=0.7",
+    "mypy>=1.13",
+    "pandas-stubs",
+    "types-openpyxl",
+]
+
+[project.scripts]
+dss = "app.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app", "simulator"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "C4", "SIM", "RUF"]
+ignore = [
+    "B008",   # FastAPI Depends()/File()/Form() in argument defaults is the documented idiom
+    "UP042",  # `class X(str, Enum)` is kept deliberately for JSON-friendly values
+    "N811",   # `import UUID as PgUUID` -- aliasing a dialect type is not a constant rename
+]
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/versions/*" = ["E501"]
+"tests/*" = ["E501"]
+
+[tool.mypy]
+python_version = "3.11"
+plugins = ["pydantic.mypy"]
+ignore_missing_imports = true
+warn_unused_ignores = true
+disallow_untyped_defs = true
+exclude = "alembic/"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]

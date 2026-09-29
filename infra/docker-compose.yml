@@ -1,0 +1,66 @@
+name: dss
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: dss
+      POSTGRES_PASSWORD: dss
+      POSTGRES_DB: dss
+    ports:
+      # 55432 on the host: 5432 is commonly taken by a locally installed PostgreSQL.
+      - "55432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dss -d dss"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollamadata:/root/.ollama
+    profiles: ["llm"]
+
+  api:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      DSS_DATABASE_URL: postgresql+psycopg://dss:dss@postgres:5432/dss
+      DSS_OLLAMA_BASE_URL: http://ollama:11434
+      DSS_SECRET_KEY: ${DSS_SECRET_KEY:-dev-secret-key-change-me-32-characters}
+      DSS_SCHEDULER_ENABLED: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      # 8010 on the host: 8000 is a very common local dev port.
+      - "8010:8000"
+    volumes:
+      - artifacts:/app/artifacts
+      - hfcache:/root/.cache/huggingface
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+
+  web:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8010
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+  ollamadata:
+  artifacts:
+  hfcache:

@@ -1,0 +1,96 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend (lint, types, tests)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: dss
+          POSTGRES_PASSWORD: dss
+          POSTGRES_DB: dss
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U dss -d dss"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+
+    env:
+      # The service container is reachable on the standard port inside the runner;
+      # only local development uses 55432 (see README).
+      DSS_DATABASE_URL: postgresql+psycopg://dss:dss@localhost:5432/dss
+      DSS_SECRET_KEY: ci-only-secret-not-used-in-production
+      DSS_ADMIN_EMAIL: admin@dss-demo.com
+      DSS_ADMIN_PASSWORD: admin12345
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: backend/pyproject.toml
+
+      - name: Install
+        run: pip install -e ".[dev]"
+
+      - name: Lint
+        run: |
+          ruff check .
+          ruff format --check .
+
+      - name: Type check
+        run: mypy app simulator
+
+      - name: Migrate
+        run: alembic upgrade head
+
+      - name: Test
+        run: pytest -q
+
+  frontend:
+    name: Frontend (types, build)
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:8010

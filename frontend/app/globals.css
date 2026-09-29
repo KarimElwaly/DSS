@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  background: #0b0f17;
+  color: #e6eaf2;
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.card {
+  border: 1px solid #1e2836;
+  background: #111826;
+  border-radius: 0.75rem;
+}
+
+.pill {
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+table.data th {
+  text-align: left;
+  font-weight: 600;
+  color: #8ea0bd;
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid #1e2836;
+  white-space: nowrap;
+}
+
+table.data td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid #161f2c;
+}
+
+table.data tbody tr:hover {
+  background: #151d2b;
+}
