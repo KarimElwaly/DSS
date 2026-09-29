@@ -12,7 +12,9 @@ const LINKS = [
   { href: "/workbench", label: "Workbench" },
   { href: "/recommendations", label: "Recommendations" },
   { href: "/sandbox", label: "Sandbox" },
+  { href: "/advisor", label: "CFO Advisor" },
 ];
+
 
 
 

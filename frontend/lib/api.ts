@@ -341,4 +341,43 @@ export interface SimulationRun {
   n_monte_carlo: number;
 }
 
+export interface FinancialPeriod {
+  id: string;
+  label: string;
+  granularity: string;
+  period_start: string;
+  period_end: string;
+  currency: string;
+  metrics: Record<string, number>;
+}
+
+export interface FinancialFinding {
+  id: string;
+  period_id: string;
+  period_label: string;
+  metric_key: string;
+  severity: "info" | "warning" | "critical";
+  title: string;
+  detail: string;
+  current_value: number | null;
+  expected_value: number | null;
+  delta_pct: number | null;
+  z_score: number | null;
+}
+
+export interface AdvisorReport {
+  id: string;
+  period_id: string | null;
+  model_name: string;
+  facts: Record<string, unknown>;
+  narrative: string;
+  recommendations: Array<{ priority?: string; category?: string; action: string; expected_impact?: string }>;
+  grounding_passed: boolean;
+  grounding_violations: string[];
+  latency_ms: number | null;
+  created_at: string;
+}
+
+
+
 

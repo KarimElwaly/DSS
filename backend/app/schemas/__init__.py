@@ -14,6 +14,15 @@ from app.schemas.auth import Token, TokenPayload, UserLogin, UserOut
 from app.schemas.catalog import CategoryOut, ProductCreate, ProductDetailOut, ProductOut, ProductUpdate
 from app.schemas.common import MessageResponse, Page
 from app.schemas.market import CompetitorListingOut, CompetitorOut, MarketSnapshotOut, PriceObservationOut
+from app.schemas.finance import (
+    AdvisorReportOut,
+    FinancialFindingOut,
+    FinancialLineItemOut,
+    FinancialMetricOut,
+    FinancialPeriodOut,
+    PeriodDetailOut,
+    UploadStatementsRequest,
+)
 from app.schemas.matching import MatchCandidateOut, MatchReviewAction
 from app.schemas.pricing import (
     DecideRecommendationRequest,
@@ -24,6 +33,7 @@ from app.schemas.pricing import (
 )
 
 __all__ = [
+    "AdvisorReportOut",
     "CategoryOut",
     "CompetitorListingOut",
     "CompetitorOut",
@@ -31,6 +41,10 @@ __all__ = [
     "DecideRecommendationRequest",
     "DemandCurvePoint",
     "ElasticityEstimateOut",
+    "FinancialFindingOut",
+    "FinancialLineItemOut",
+    "FinancialMetricOut",
+    "FinancialPeriodOut",
     "FitElasticityReport",
     "FitForecastReport",
     "ForecastPointOut",
@@ -40,6 +54,7 @@ __all__ = [
     "MatchReviewAction",
     "MessageResponse",
     "Page",
+    "PeriodDetailOut",
     "PriceObservationOut",
     "PriceRecommendationOut",
     "ProductCreate",
@@ -50,6 +65,8 @@ __all__ = [
     "SimulationRunOut",
     "SkuForecastOut",
     "SkuWorkbenchOut",
+    "UploadStatementsRequest",
+
 
     "Token",
     "TokenPayload",

@@ -26,6 +26,10 @@ from app.models import (
 )
 from app.models.enums import AlertStatus, PricingObjective
 from app.services.elasticity import fit_elasticity_model
+from app.services.finance.advisor import generate_cfo_advisor_report
+from app.services.finance.anomalies import detect_financial_anomalies
+from app.services.finance.ingestion import seed_demo_financials
+from app.services.finance.metrics import compute_all_metrics
 from app.services.forecasting import run_demand_forecast
 from app.services.ingestion import run_ingestion
 from app.services.matching import run_matching
@@ -33,6 +37,7 @@ from app.services.optimization.engine import generate_recommendations
 from app.services.seed import get_default_organization, reset_database, seed_market
 from app.services.simulation.scenario import run_scenario_simulation
 from simulator import MarketSimulator, default_electronics_market
+
 
 
 
@@ -358,7 +363,49 @@ def simulate_cmd(
         console.print(table)
 
 
+@app.command(name="seed-finance")
+def seed_finance_cmd() -> None:
+    """Seed trailing 8 quarters of financial statements, compute metrics, and detect anomalies."""
+    with session_scope() as session:
+        org = get_default_organization(session)
+        console.print("[bold]Seeding 8 trailing quarters of financial statements...[/]")
+        periods = seed_demo_financials(session, org.id)
+        compute_all_metrics(session, org.id)
+        findings = detect_financial_anomalies(session, org.id)
+
+        console.print(f"[green]Successfully seeded {len(periods)} periods.[/]")
+        if findings:
+            console.print(f"[yellow]Detected {len(findings)} financial anomalies/findings.[/]")
+
+
+@app.command(name="cfo-report")
+def cfo_report_cmd(
+    model: str = typer.Option("llama3.2", "--model", "-m", help="LLM model name (Ollama)."),
+) -> None:
+    """Generate CFO strategic advisor report with numeric-grounding verification."""
+    with session_scope() as session:
+        org = get_default_organization(session)
+        console.print(f"[bold]Generating CFO strategic report (model={model})...[/]")
+        report = generate_cfo_advisor_report(session, org.id, model_name=model)
+
+        console.rule("[bold cyan]CFO Strategic Narrative[/]")
+        console.print(report.narrative)
+        console.rule()
+
+        ground_status = "[green]PASSED (100% Grounded)[/]" if report.grounding_passed else f"[red]FAILED ({len(report.grounding_violations)} violations)[/]"
+        console.print(f"Grounding Status: {ground_status}")
+        if report.grounding_violations:
+            for v in report.grounding_violations:
+                console.print(f"  [red]• {v}[/]")
+
+        if report.recommendations:
+            console.print("\n[bold]Strategic Actions:[/]")
+            for idx, r in enumerate(report.recommendations, 1):
+                console.print(f"  {idx}. [bold]{r.get('action')}[/] [dim]({r.get('expected_impact', '')})[/]")
+
+
 if __name__ == "__main__":
     app()
+
 
 
