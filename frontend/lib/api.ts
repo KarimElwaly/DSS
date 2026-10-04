@@ -37,7 +37,11 @@ export async function apiFetch<T>(
   headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const response = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  const normalizedPath = path.startsWith("/api")
+    ? path
+    : `/api${path.startsWith("/") ? "" : "/"}${path}`;
+
+  const response = await fetch(`${API_BASE}${normalizedPath}`, { ...init, headers });
 
   if (response.status === 401) {
     clearToken();

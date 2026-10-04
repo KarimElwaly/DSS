@@ -20,7 +20,7 @@ export function useRequireAuth(): boolean {
   useEffect(() => {
     let cancelled = false;
 
-    apiFetch<User>("/auth/me")
+    apiFetch<User>("/api/auth/me")
       .then(() => {
         if (!cancelled) setReady(true);
       })

@@ -17,7 +17,7 @@ export default function LoginPage() {
     // Ask the API whether we are already accepted. This covers a live token
     // and, when the server runs with auth disabled, skips the form entirely --
     // so the front end needs no flag of its own to stay in step.
-    apiFetch<User>("/auth/me")
+    apiFetch<User>("/api/auth/me")
       .then(() => router.replace("/"))
       .catch(() => {
         if (!cancelled) setChecking(false);

@@ -99,15 +99,16 @@ def run_walkthrough(fast: bool = False, skip_seed: bool = False) -> None:
         console.rule("[bold blue]Step 2: Competitive Intelligence & Ingestion (Module A - W2)[/]")
         console.print("Polling competitor feeds and executing matching pipeline...")
         ingest_report = run_ingestion(session, org.id, match=True, alert=True)
+        n_alerts = sum(ingest_report.alerts.values()) if ingest_report.alerts else 0
         console.print(
             f"[green]✓ Ingestion:[/] Processed {len(ingest_report.competitors)} feeds "
-            f"({ingest_report.alerts} alert(s) triggered)."
+            f"({n_alerts} alert(s) triggered)."
         )
 
         match_report = run_matching(session, org.id)
         console.print(
             f"[green]✓ Product Matching:[/] {match_report.auto_accepted} auto-accepted "
-            f"(GTIN + embedding cosine > 0.88), {match_report.flagged_for_review} sent to review queue."
+            f"(GTIN + embedding cosine > 0.88), {match_report.needs_review} sent to review queue."
         )
 
         # -------------------------------------------------------------
@@ -223,12 +224,12 @@ def run_walkthrough(fast: bool = False, skip_seed: bool = False) -> None:
         console.rule("[bold green]Step 7: Corporate Financials & Anomaly Detection (Module F - W5)[/]")
         console.print("Seeding 8 trailing quarters of financial statements and computing KPIs...")
         periods = seed_demo_financials(session, org.id)
-        metrics = compute_all_metrics(session, org.id)
+        metrics_summary = compute_all_metrics(session, org.id)
         findings = detect_financial_anomalies(session, org.id)
 
         console.print(
             f"[green]✓ Financial Engine:[/] Loaded {len(periods)} quarters. "
-            f"Computed {len(metrics)} financial KPI records. "
+            f"Computed {metrics_summary.get('metrics_count', 0)} financial KPI records. "
             f"Flagged {len(findings)} operational anomaly finding(s)."
         )
 

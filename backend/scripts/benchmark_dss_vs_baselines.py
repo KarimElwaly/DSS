@@ -19,6 +19,7 @@ import argparse
 import math
 import sys
 from dataclasses import dataclass
+from decimal import Decimal
 from pathlib import Path
 from typing import Any
 
@@ -26,7 +27,6 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import numpy as np
-import pandas as pd
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -52,19 +52,46 @@ class PolicyResult:
     cat_revenue: dict[str, float]
 
 
+def _draw_elasticities(config: MarketConfig, seed: int) -> dict[str, float]:
+    """Draw ground-truth elasticities identically to MarketSimulator._draw_elasticities."""
+    rng = np.random.default_rng(seed)
+    categories = {c.slug: c for c in config.categories}
+    out: dict[str, float] = {}
+    for spec in config.products:
+        cat = categories[spec.category_slug]
+        value = float(rng.normal(cat.elasticity_mean, cat.elasticity_sd))
+        out[spec.sku] = float(np.clip(value, -4.0, -1.25))
+    return out
+
+
+def _guardrail_price(
+    candidate: float, current: float, cost: float, *, apply_charm: bool = True
+) -> float:
+    """Wrapper around Module C guardrails that converts floats to Decimal."""
+    result = apply_guardrails(
+        unconstrained_price=Decimal(str(round(candidate, 2))),
+        current_price=Decimal(str(round(current, 2))),
+        unit_cost=Decimal(str(round(cost, 2))),
+        min_margin_pct=Decimal("0.15"),
+        max_price_step_pct=Decimal("0.15"),
+        apply_charm_rounding=apply_charm,
+    )
+    return float(result.final_price)
+
+
 def run_policy_simulation(
     policy_name: str,
     pricing_strategy: str,
     config: MarketConfig,
+    elasticities: dict[str, float],
     n_days: int = 90,
     seed: int = 42,
 ) -> PolicyResult:
     """Simulate market demand under a specified pricing policy over n_days."""
     rng = np.random.default_rng(seed)
     categories = {c.slug: c for c in config.categories}
-    specs = config.products
-    specs_by_sku = {s.sku: s} for s in specs
-    n_skus = len(specs)
+    specs = list(config.products)
+    specs_by_sku = {s.sku: s for s in specs}
 
     # 1. Generate base competitor paths
     # For fair counterfactual comparison, rivals follow deterministic response with identical seed
@@ -89,8 +116,8 @@ def run_policy_simulation(
     for spec in specs:
         p_path = np.empty(n_days)
         p0 = spec.launch_price
-        cost = spec.unit_cost
-        eps = spec.own_elasticity
+        cost = spec.base_cost
+        eps = elasticities[spec.sku]
 
         if pricing_strategy == "cost_plus":
             # Standard retail 25% markup over unit cost
@@ -120,13 +147,13 @@ def run_policy_simulation(
 
             for cand in candidates:
                 rel_p = cand / p0
-                q = spec.base_demand * (rel_p**eps)
+                q = spec.base_demand * (rel_p ** eps)
                 # Sibling cannibalization impact
                 cannibalization_loss = 0.0
                 for sib_sku in spec.substitutes:
                     if sib_sku in specs_by_sku:
                         sib = specs_by_sku[sib_sku]
-                        sib_margin = sib.launch_price - sib.unit_cost
+                        sib_margin = sib.launch_price - sib.base_cost
                         cannibalization_loss += (
                             sib_margin * sib.base_demand * spec.substitute_cross_elasticity * np.log(rel_p)
                         )
@@ -136,19 +163,7 @@ def run_policy_simulation(
                     best_p = cand
 
             # Pass through Module C guardrail layer
-            # Floor: min margin >= 15%
-            # Ceiling: <= 3.0x cost
-            # Step limit: <= 15% from launch price
-            # Charm rounding: .99 ending
-            guarded_p, _ = apply_guardrails(
-                candidate_price=best_p,
-                current_price=p0,
-                unit_cost=cost,
-                min_margin=0.15,
-                max_price=cost * 3.0,
-                max_step_pct=0.15,
-                apply_charm_rounding=True,
-            )
+            guarded_p = _guardrail_price(best_p, p0, cost, apply_charm=True)
             p_path.fill(guarded_p)
         else:
             raise ValueError(f"Unknown pricing strategy: {pricing_strategy}")
@@ -173,10 +188,10 @@ def run_policy_simulation(
 
         for spec in specs:
             cat = categories[spec.category_slug]
-            eps = spec.own_elasticity
+            eps = elasticities[spec.sku]
             gamma = spec.curvature(eps)
             price = our_prices[spec.sku][t]
-            cost = spec.unit_cost
+            cost = spec.base_cost
 
             x = np.log(price / spec.launch_price)
             seasonal = cat.seasonal_amplitude * np.cos(
@@ -199,7 +214,7 @@ def run_policy_simulation(
             log_mu = (
                 math.log(spec.base_demand)
                 + eps * x
-                + gamma * x**2
+                + gamma * x ** 2
                 + comp_term
                 + sibling_term
                 + seasonal
@@ -245,6 +260,7 @@ def print_benchmark_results(
     comp_match: PolicyResult,
     dss: PolicyResult,
     config: MarketConfig,
+    elasticities: dict[str, float],
     n_days: int,
 ) -> None:
     """Print beautifully formatted comparison tables and analysis."""
@@ -259,7 +275,7 @@ def print_benchmark_results(
 
     # 1. Headline Policy Performance Table
     headline_table = Table(
-        title="[bold]Table 1: Strategic Policy Comparison (Aggregate 90 Days)[/]",
+        title="[bold]Table 1: Strategic Policy Comparison (Aggregate)[/]",
         header_style="bold magenta",
     )
     headline_table.add_column("Pricing Strategy", style="bold")
@@ -355,35 +371,27 @@ def print_benchmark_results(
     sku_table.add_column("Profit Lift", justify="right")
 
     # Select representative SKUs (elastic, inelastic, high-value, mid-value)
-    selected_skus = config.products[:8]
+    selected_skus = list(config.products)[:8]
     for spec in selected_skus:
         cp_p = cost_plus.sku_profits.get(spec.sku, 0.0)
         dss_p = dss.sku_profits.get(spec.sku, 0.0)
         lift = ((dss_p - cp_p) / cp_p * 100.0) if cp_p > 0 else 0.0
+        eps = elasticities[spec.sku]
 
         # Compute sample prices
-        cp_price = charm_round(spec.unit_cost * 1.25)
-        # Approximate DSS price
-        eps = spec.own_elasticity
+        cp_price = charm_round(spec.base_cost * 1.25)
+        # DSS guardrailed price
         if eps < -1.05:
-            dss_raw = spec.unit_cost * (abs(eps) / (abs(eps) - 1.0))
+            dss_raw = spec.base_cost * (abs(eps) / (abs(eps) - 1.0))
         else:
-            dss_raw = spec.unit_cost * 1.80
-        guarded, _ = apply_guardrails(
-            dss_raw,
-            spec.launch_price,
-            spec.unit_cost,
-            min_margin=0.15,
-            max_price=spec.unit_cost * 3.0,
-            max_step_pct=0.15,
-            apply_charm_rounding=True,
-        )
+            dss_raw = spec.base_cost * 1.80
+        guarded = _guardrail_price(dss_raw, spec.launch_price, spec.base_cost)
 
         sku_table.add_row(
             spec.sku,
             spec.name[:24],
-            f"{spec.own_elasticity:.2f}",
-            f"${spec.unit_cost:.2f}",
+            f"{eps:.2f}",
+            f"${spec.base_cost:.2f}",
             f"${cp_price:.2f}",
             f"${guarded:.2f}",
             f"${cp_p:,.2f}",
@@ -397,7 +405,7 @@ def print_benchmark_results(
     exec_summary = (
         f"[bold underline]Executive Findings:[/]\n"
         f"1. [bold green]Profit Superiority:[/] DSS generated [bold green]${dss.gross_profit:,.2f}[/] "
-        f"in gross profit over 90 days, delivering a [bold green]{lift_vs_cp:+.2f}%[/] lift over Cost-Plus "
+        f"in gross profit over {n_days} days, delivering a [bold green]{lift_vs_cp:+.2f}%[/] lift over Cost-Plus "
         f"and a [bold green]{lift_vs_cm:+.2f}%[/] lift over Competitor-Matching.\n"
         f"2. [bold]Elasticity Asymmetry:[/] For inelastic SKUs (e.g. ε > -1.2), Cost-Plus underprices "
         f"leaving substantial consumer surplus uncaptured. DSS safely expands margin without sacrificing volume.\n"
@@ -417,13 +425,14 @@ def main() -> None:
     args = parser.parse_args()
 
     config = default_electronics_market(seed=args.seed)
+    elasticities = _draw_elasticities(config, seed=args.seed)
 
     console.print(f"[dim]Running simulation for {args.days} days across {len(config.products)} SKUs...[/]")
-    cp_res = run_policy_simulation("Cost-Plus (+25%)", "cost_plus", config, n_days=args.days, seed=args.seed)
-    cm_res = run_policy_simulation("Competitor-Matching", "competitor_match", config, n_days=args.days, seed=args.seed)
-    dss_res = run_policy_simulation("DSS Optimization", "dss", config, n_days=args.days, seed=args.seed)
+    cp_res = run_policy_simulation("Cost-Plus (+25%)", "cost_plus", config, elasticities, n_days=args.days, seed=args.seed)
+    cm_res = run_policy_simulation("Competitor-Matching", "competitor_match", config, elasticities, n_days=args.days, seed=args.seed)
+    dss_res = run_policy_simulation("DSS Optimization", "dss", config, elasticities, n_days=args.days, seed=args.seed)
 
-    print_benchmark_results(cp_res, cm_res, dss_res, config, n_days=args.days)
+    print_benchmark_results(cp_res, cm_res, dss_res, config, elasticities, n_days=args.days)
 
 
 if __name__ == "__main__":

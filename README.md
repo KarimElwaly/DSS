@@ -46,8 +46,8 @@ whose true parameters are known by construction.
                                                 ▼
 ┌───────────────────────────────────────────────────────────────────────────────────────────┐
 │                                   Next.js Web Frontend                                    │
-│   • /overview        • /market-watch    • /workbench        • /sandbox                    │
-│   • /catalog         • /match-review    • /recommendations  • /advisor                    │
+│   • / (Overview)     • /market (Market Watch) • /workbench (SKU Diagnostics) • /sandbox   │
+│   • /catalog         • /listings (Match Review)• /recommendations            • /advisor   │
 └───────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -222,18 +222,18 @@ This runs:
 
 The frontend provides dedicated decision-support screens for every operational persona:
 
-* **[Executive Overview](file:///frontend/app/page.tsx)** (`/`): High-level KPIs, revenue & margin trajectories, catalog health, active alerts.
-* **[Product Catalog](file:///frontend/app/catalog/page.tsx)** (`/catalog`): Searchable catalog, unit costs, pricing margins, stock states.
-* **[Market Watch](file:///frontend/app/market-watch/page.tsx)** (`/market-watch`): Competitor price index tracker, competitor landed prices, out-of-stock monitor.
-* **[Match Review Queue](file:///frontend/app/match-review/page.tsx)** (`/match-review`): Human-in-the-loop review of uncertain product matches (approve, reassign, reject).
-* **[SKU Workbench](file:///frontend/app/workbench/page.tsx)** (`/workbench` and `/workbench/[productId]`): Econometric demand curves, 90% confidence intervals, price variation diagnostics, 30-day Holt-Winters ETS forward forecast.
-* **[Price Recommendations](file:///frontend/app/recommendations/page.tsx)** (`/recommendations`): Constrained price recommendations under Margin/Revenue/Penetration objectives, binding guardrails, recommendation lifecycle (approve/reject/apply).
-* **[Scenario Sandbox](file:///frontend/app/sandbox/page.tsx)** (`/sandbox`): Interactive what-if pricing experiments with Monte Carlo fan charts and competitor reaction modeling.
-* **[CFO Strategic Advisor](file:///frontend/app/advisor/page.tsx)** (`/advisor`): Financial KPI cockpit (EBITDA, CAC, LTV, Runway, CCC), anomaly detection feed, and grounded AI strategic synthesis with 100% verified numeric facts.
+* **[Executive Overview](file:///d:/projects/DSS/frontend/app/page.tsx)** (`/`): High-level KPIs, revenue & margin trajectories, catalog health, active alerts.
+* **[Product Catalog](file:///d:/projects/DSS/frontend/app/catalog/page.tsx)** (`/catalog`): Searchable catalog, unit costs, pricing margins, stock states.
+* **[Market Watch](file:///d:/projects/DSS/frontend/app/market/page.tsx)** (`/market`): Competitor price index tracker, competitor landed prices, out-of-stock monitor.
+* **[Match Review Queue](file:///d:/projects/DSS/frontend/app/listings/page.tsx)** (`/listings`): Human-in-the-loop review of uncertain product matches (approve, reassign, reject).
+* **[SKU Workbench](file:///d:/projects/DSS/frontend/app/workbench/page.tsx)** (`/workbench`): Econometric demand curves, 90% confidence intervals, price variation diagnostics, 30-day Holt-Winters ETS forward forecast.
+* **[Price Recommendations](file:///d:/projects/DSS/frontend/app/recommendations/page.tsx)** (`/recommendations`): Constrained price recommendations under Margin/Revenue/Penetration objectives, binding guardrails, recommendation lifecycle (approve/reject/apply).
+* **[Scenario Sandbox](file:///d:/projects/DSS/frontend/app/sandbox/page.tsx)** (`/sandbox`): Interactive what-if pricing experiments with Monte Carlo fan charts and competitor reaction modeling.
+* **[CFO Strategic Advisor](file:///d:/projects/DSS/frontend/app/advisor/page.tsx)** (`/advisor`): Financial KPI cockpit (EBITDA, CAC, LTV, Runway, CCC), anomaly detection feed, and grounded AI strategic synthesis with 100% verified numeric facts.
 
 ---
 
-## API Sitemap (`/api/v1`)
+## API Sitemap (`/api`)
 
 ```
 Authentication:
@@ -273,19 +273,35 @@ Financial Performance & AI Advisor (Module F):
 
 ---
 
+## Commercial Roadmap & Enterprise Transition
+
+> For the comprehensive strategic gap analysis, target ICP, and packaging tiers, see the full artifact:  
+> [commercial_product_roadmap_and_gap_analysis.md](file:///C:/Users/Karim%20ElWaly/.gemini/antigravity-ide/brain/b74a23ae-a1e4-440f-b924-6cc135bfec49/commercial_product_roadmap_and_gap_analysis.md)
+
+### The 6 Pillars to Commercial SaaS Viability
+
+1. **Closed-Loop Execution (Write-Back API)**: Direct push to Shopify Variant API, Amazon SP-API repricers, and ERP price books (SAP S/4HANA, NetSuite) with an emergency 60-second kill switch.
+2. **Industrial Data Ingestion**: Webhook sync with eCommerce storefronts, Snowflake/BigQuery data warehouse historical order pipelines, and managed proxy scrapers (Bright Data / Oxylabs) to bypass Cloudflare.
+3. **Advanced Retail Econometrics**: Tobit regression to eliminate zero-demand bias during stockouts, Weeks-of-Supply (WOS) inventory yield constraints, and promotional/holiday indicator variables.
+4. **Enterprise Multi-Tenancy & Governance**: PostgreSQL Row-Level Security (RLS) enforcement, SAML 2.0 / Okta SSO, SCIM provisioning, and tiered approval matrices (Merchandiser $\to$ Director $\to$ CFO).
+5. **Distributed Scalability**: Celery + Redis worker cluster replacing in-memory scheduling, partitioned HNSW vector indexing for 500k+ competitor listings, and HiGHS/OR-Tools MILP solvers.
+6. **Commercial Packaging**: Growth ($1,500/mo), Scale ($4,500/mo), and Enterprise ($10,000+/mo) subscription tiers with 15-minute self-service store onboarding.
+
+---
+
 ## Quality Gates & Verification
 
 ```powershell
 # Backend verification
 cd backend
-pytest tests/ -q                     # Test suite (all modules)
-python scripts/smoke_api.py          # API route smoke test
-python scripts/benchmark_dss_vs_baselines.py  # Pricing policy benchmark
+pytest tests/ -q                             # Test suite (all modules)
+python scripts/smoke_api.py                  # API route smoke test
+python scripts/benchmark_dss_vs_baselines.py # Pricing policy benchmark
 
 # Frontend verification
 cd ../frontend
-npm run typecheck                    # TypeScript strict type check
-npm run build                        # Production build verification
+npm run typecheck                            # TypeScript strict type check
+npm run build                                # Production build verification
 ```
 
 ---

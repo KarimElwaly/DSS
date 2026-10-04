@@ -6,7 +6,7 @@ FastAPI service and econometric analytics engine powering the Revenue & Pricing 
 
 | Module | Core Services & Endpoints | Econometric & Mathematical Engine |
 | --- | --- | --- |
-| **A. Ingestion & Matching** | `app/services/ingestion.py`, `app/services/matching.py`, `app/api/routes/market.py` | Two-stage matcher: GTIN exact $\to$ pgvector cosine similarity ($\ge 0.88$ auto-accept) $\to$ review queue |
+| **A. Ingestion & Matching** | `app/services/ingestion.py`, `app/services/matching.py`, `app/api/routes/market.py` | Two-stage matcher: GTIN exact $\to$ pgvector cosine similarity ($\ge 0.86$ auto-accept) $\to$ review queue |
 | **B. Elasticity & Forecasting** | `app/services/elasticity.py`, `app/services/forecasting.py`, `app/api/routes/analytics.py` | Log-log OLS with HC3 robust covariance, 90% CIs, pooled category fallback, 30d Holt-Winters ETS + WAPE backtest |
 | **C. Dynamic Pricing** | `app/services/optimization/`, `app/api/routes/pricing.py` | Profit/Revenue/Penetration grid evaluation, substitute cross-elasticity cannibalization penalty, hard guardrails |
 | **D. Scenario Sandbox** | `app/services/simulation/scenario.py`, `app/api/routes/pricing.py` | Monte Carlo parameter draws $\varepsilon \sim \mathcal{N}$, competitor reaction dynamics, P05/P25/P50/P75/P95 bands |
