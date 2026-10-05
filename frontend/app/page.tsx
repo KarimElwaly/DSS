@@ -11,6 +11,7 @@ export default function OverviewPage() {
   const ready = useRequireAuth();
   const [rows, setRows] = useState<MarketSnapshot[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showAll, setShowAll] = useState(false);
 
   useEffect(() => {
     if (!ready) return;
@@ -31,11 +32,10 @@ export default function OverviewPage() {
 
   // Sort by the largest absolute deviation from the market -- the SKUs where a
   // pricing decision is most likely to move the needle.
-  const attention = [...tracked]
-    .sort(
-      (a, b) => Math.abs(b.price_gap_pct ?? 0) - Math.abs(a.price_gap_pct ?? 0),
-    )
-    .slice(0, 10);
+  const sortedTracked = [...tracked].sort(
+    (a, b) => Math.abs(b.price_gap_pct ?? 0) - Math.abs(a.price_gap_pct ?? 0),
+  );
+  const attention = showAll ? sortedTracked : sortedTracked.slice(0, 10);
 
   return (
     <div className="space-y-6">
@@ -74,11 +74,35 @@ export default function OverviewPage() {
       </div>
 
       <section className="card">
-        <div className="border-b border-[#1e2836] px-4 py-3">
-          <h2 className="text-sm font-semibold">Largest deviations from market</h2>
-          <p className="text-xs text-slate-500">
-            Ranked by absolute gap between our price and the competitor index.
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#1e2836] px-4 py-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-semibold">
+                {showAll ? "All Deviations from Market" : "Top 10 Largest Deviations from Market"}
+              </h2>
+              <span className="rounded bg-[#1a2334] px-2 py-0.5 text-xs text-slate-400">
+                {attention.length} of {tracked.length} SKUs
+              </span>
+            </div>
+            <p className="text-xs text-slate-500">
+              Ranked by absolute gap between our price and the competitor index.
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setShowAll(!showAll)}
+              className="rounded border border-[#1e2836] bg-[#0d1220] px-2.5 py-1 text-xs font-medium text-slate-300 transition hover:bg-[#1a2334] hover:text-white"
+            >
+              {showAll ? "Show Top 10" : `Show All ${tracked.length}`}
+            </button>
+            <Link
+              href="/market"
+              className="text-xs font-medium text-sky-400 hover:text-sky-300 hover:underline"
+            >
+              Full Market Watch →
+            </Link>
+          </div>
         </div>
         <div className="overflow-x-auto">
           <table className="data">

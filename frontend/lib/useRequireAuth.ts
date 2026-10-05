@@ -4,36 +4,59 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { apiFetch, type User } from "@/lib/api";
 
+let _sessionVerified = false;
+let _verifyPromise: Promise<boolean> | null = null;
+
+export function resetAuthSession(): void {
+  _sessionVerified = false;
+  _verifyPromise = null;
+}
+
 /**
  * Gate a page on the API accepting us.
  *
- * This asks the API who we are rather than checking for a token in
- * localStorage. It costs one request, but the front end then needs no copy of
- * the server's auth configuration: when `DSS_AUTH_DISABLED` is on the probe
- * simply succeeds, and when it is off an expired token is caught here rather
- * than on the first data request.
+ * Caches verification across client-side navigations so clicking tabs
+ * transitions instantly instead of unmounting and blocking on /api/auth/me.
  */
 export function useRequireAuth(): boolean {
   const router = useRouter();
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState<boolean>(_sessionVerified);
 
   useEffect(() => {
+    if (_sessionVerified) {
+      if (!ready) setReady(true);
+      return;
+    }
+
     let cancelled = false;
 
-    apiFetch<User>("/api/auth/me")
-      .then(() => {
-        if (!cancelled) setReady(true);
-      })
-      .catch(() => {
-        // apiFetch already clears a rejected token, so redirecting is all that
-        // is left to do.
-        if (!cancelled) router.replace("/login");
-      });
+    if (!_verifyPromise) {
+      _verifyPromise = apiFetch<User>("/api/auth/me")
+        .then(() => {
+          _sessionVerified = true;
+          return true;
+        })
+        .catch(() => {
+          _sessionVerified = false;
+          _verifyPromise = null;
+          return false;
+        });
+    }
+
+    _verifyPromise.then((ok) => {
+      if (cancelled) return;
+      if (ok) {
+        setReady(true);
+      } else {
+        router.replace("/login");
+      }
+    });
 
     return () => {
       cancelled = true;
     };
-  }, [router]);
+  }, [ready, router]);
 
   return ready;
 }
+

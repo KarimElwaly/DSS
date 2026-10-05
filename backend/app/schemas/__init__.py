@@ -10,8 +10,22 @@ from app.schemas.analytics import (
     SkuForecastOut,
     SkuWorkbenchOut,
 )
-from app.schemas.auth import Token, TokenPayload, UserLogin, UserOut
-from app.schemas.catalog import CategoryOut, ProductCreate, ProductDetailOut, ProductOut, ProductUpdate
+from app.schemas.auth import (
+    LoginRequest,
+    Token,
+    TokenPayload,
+    TokenResponse,
+    UserLogin,
+    UserOut,
+)
+from app.schemas.catalog import (
+    CategoryOut,
+    ProductDetail,
+    ProductDetailOut,
+    ProductMarketPosition,
+    ProductOut,
+    SalesPoint,
+)
 from app.schemas.common import MessageResponse, Page
 from app.schemas.market import CompetitorListingOut, CompetitorOut, MarketSnapshotOut, PriceObservationOut
 from app.schemas.finance import (
@@ -57,10 +71,11 @@ __all__ = [
     "PeriodDetailOut",
     "PriceObservationOut",
     "PriceRecommendationOut",
-    "ProductCreate",
+    "ProductDetail",
     "ProductDetailOut",
+    "ProductMarketPosition",
     "ProductOut",
-    "ProductUpdate",
+    "SalesPoint",
     "ScenarioSimulationRequest",
     "SimulationRunOut",
     "SkuForecastOut",
@@ -68,8 +83,10 @@ __all__ = [
     "UploadStatementsRequest",
 
 
+    "LoginRequest",
     "Token",
     "TokenPayload",
+    "TokenResponse",
     "UserLogin",
     "UserOut",
 ]

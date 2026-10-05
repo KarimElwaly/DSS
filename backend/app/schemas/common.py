@@ -31,3 +31,7 @@ class PageParams(BaseModel):
 
 class Message(BaseModel):
     detail: str
+
+
+# Backward-compatible alias
+MessageResponse = Message

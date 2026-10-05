@@ -63,6 +63,10 @@ class ProductDetail(ProductOut):
     market: ProductMarketPosition | None = None
 
 
+# Alias for backward compatibility
+ProductDetailOut = ProductDetail
+
+
 class SalesPoint(BaseModel):
     sale_date: dt.date
     units: int

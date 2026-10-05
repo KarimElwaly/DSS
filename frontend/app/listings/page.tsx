@@ -8,19 +8,19 @@ import { useRequireAuth } from "@/lib/useRequireAuth";
 
 const STATUSES = [
   { key: "", label: "All" },
-  { key: "AUTO_ACCEPTED", label: "Auto-accepted" },
-  { key: "PENDING", label: "Pending" },
-  { key: "NEEDS_REVIEW", label: "Needs review" },
-  { key: "CONFIRMED", label: "Confirmed" },
-  { key: "REJECTED", label: "Rejected" },
+  { key: "auto_accepted", label: "Auto-accepted" },
+  { key: "pending", label: "Pending" },
+  { key: "needs_review", label: "Needs review" },
+  { key: "confirmed", label: "Confirmed" },
+  { key: "rejected", label: "Rejected" },
 ];
 
 function MatchBadge({ listing }: { listing: Listing }) {
-  const status = listing.match_status;
+  const status = (listing.match_status || "").toLowerCase();
   const tone =
-    status === "AUTO_ACCEPTED" || status === "CONFIRMED"
+    status === "auto_accepted" || status === "confirmed"
       ? "bg-emerald-500/15 text-emerald-300"
-      : status === "REJECTED"
+      : status === "rejected"
         ? "bg-red-500/15 text-red-300"
         : "bg-slate-500/15 text-slate-300";
   return <span className={`pill ${tone}`}>{status.replace(/_/g, " ")}</span>;
@@ -47,7 +47,6 @@ export default function ListingsPage() {
   }, [ready, status]);
 
   if (!ready) return null;
-  if (error) return <ErrorBox message={error} />;
 
   return (
     <div className="space-y-5">
@@ -76,9 +75,11 @@ export default function ListingsPage() {
         ))}
       </div>
 
-      {!rows && <Spinner />}
+      {error && <ErrorBox message={error} />}
 
-      {rows && (
+      {!rows && !error && <Spinner />}
+
+      {rows && !error && (
         <div className="card overflow-x-auto">
           <table className="data">
             <thead>

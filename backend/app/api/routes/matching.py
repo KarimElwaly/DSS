@@ -50,11 +50,17 @@ def review_queue(
     org: CurrentOrg,
     _: CurrentUser,
     page: Pagination,
-    match_status: MatchStatus | None = Query(
+    match_status: str | None = Query(
         default=None, description="Defaults to everything still awaiting a decision."
     ),
 ) -> Page[ReviewItem]:
-    statuses = [match_status] if match_status else list(_REVIEWABLE)
+    status_enum = None
+    if match_status:
+        try:
+            status_enum = MatchStatus(match_status.lower().strip())
+        except ValueError:
+            pass
+    statuses = [status_enum] if status_enum else list(_REVIEWABLE)
     filters = [
         CompetitorListing.organization_id == org.id,
         CompetitorListing.match_status.in_(statuses),

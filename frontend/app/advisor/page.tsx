@@ -59,6 +59,7 @@ export default function AdvisorPage() {
       });
       setReport(rep);
       setMsg("New CFO strategic advisor briefing generated.");
+      loadData();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {

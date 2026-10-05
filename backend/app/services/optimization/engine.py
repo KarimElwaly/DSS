@@ -248,7 +248,8 @@ def generate_recommendations(
         est = estimates_by_prod.get(product.id)
         cross_terms = cross_by_prod.get(product.id, [])
         pos = positions.get(product.id)
-        comp_idx = pos.competitor_price_index if pos else None
+        comp_raw = (pos.price_index if hasattr(pos, "price_index") else pos.competitor_price_index) if pos else None
+        comp_idx = Decimal(str(round(comp_raw, 2))) if comp_raw is not None else None
         base_v = avg_volume.get(product.id, 45.0)
 
         rec = optimize_sku_price(

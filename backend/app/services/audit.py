@@ -25,9 +25,12 @@ def record_event(
     entity_id: uuid.UUID | None = None,
     summary: str = "",
     payload: dict[str, Any] | None = None,
+    actor_id: uuid.UUID | None = None,
     actor_user_id: uuid.UUID | None = None,
     actor_label: str = "system",
+    **kwargs: Any,
 ) -> AuditEvent:
+    resolved_actor_user_id = actor_id if actor_id is not None else actor_user_id
     event = AuditEvent(
         organization_id=organization_id,
         action=action,
@@ -35,8 +38,12 @@ def record_event(
         entity_id=entity_id,
         summary=summary,
         payload=payload or {},
-        actor_user_id=actor_user_id,
+        actor_user_id=resolved_actor_user_id,
         actor_label=actor_label,
     )
     session.add(event)
     return event
+
+
+# Alias for backward compatibility across modules
+record_audit_event = record_event

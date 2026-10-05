@@ -22,6 +22,10 @@ class CandidateOut(BaseModel):
     rank: int
 
 
+# Backward-compatible aliases
+MatchCandidateOut = CandidateOut
+
+
 class ReviewItem(BaseModel):
     """One listing awaiting a human decision, with its ranked suggestions."""
 
@@ -49,6 +53,10 @@ class MatchDecision(BaseModel):
 
     product_id: uuid.UUID | None = None
     note: str = Field(default="", max_length=500)
+
+
+# Backward-compatible aliases
+MatchReviewAction = MatchDecision
 
 
 class MatchRunRequest(BaseModel):

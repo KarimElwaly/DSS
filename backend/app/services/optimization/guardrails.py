@@ -69,6 +69,9 @@ def apply_guardrails(
     4. binding_constraints lists all active restrictions.
     """
     # 1. Financial Floor: unit_cost / (1 - min_margin)
+    if competitor_index is not None and not isinstance(competitor_index, Decimal):
+        competitor_index = Decimal(str(round(float(competitor_index), 4)))
+
     if min_margin_pct >= Decimal("1.0"):
         min_margin_pct = Decimal("0.90")
 

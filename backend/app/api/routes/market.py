@@ -100,12 +100,16 @@ def list_listings(
     org: CurrentOrg,
     _: CurrentUser,
     page: Pagination,
-    match_status: MatchStatus | None = None,
+    match_status: str | None = None,
     competitor_id: uuid.UUID | None = None,
 ) -> Page[ListingOut]:
     filters = [CompetitorListing.organization_id == org.id]
-    if match_status is not None:
-        filters.append(CompetitorListing.match_status == match_status)
+    if match_status:
+        try:
+            status_enum = MatchStatus(match_status.lower().strip())
+            filters.append(CompetitorListing.match_status == status_enum)
+        except ValueError:
+            pass
     if competitor_id is not None:
         filters.append(CompetitorListing.competitor_id == competitor_id)
 

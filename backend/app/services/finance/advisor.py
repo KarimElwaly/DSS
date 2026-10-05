@@ -43,6 +43,38 @@ def build_facts_payload(session: Session, organization_id: uuid.UUID) -> dict[st
             .limit(4)
         )
     )
+
+    if not periods:
+        logger.info("No financial periods found for org %s; auto-seeding demo financials", organization_id)
+        from app.services.finance.anomalies import detect_financial_anomalies
+        from app.services.finance.ingestion import seed_demo_financials
+        from app.services.finance.metrics import compute_all_metrics
+
+        seed_demo_financials(session, organization_id)
+        compute_all_metrics(session, organization_id)
+        detect_financial_anomalies(session, organization_id)
+        session.flush()
+
+        periods = list(
+            session.scalars(
+                select(FinancialPeriod)
+                .where(FinancialPeriod.organization_id == organization_id)
+                .order_by(FinancialPeriod.period_start.desc())
+                .limit(4)
+            )
+        )
+    else:
+        # Verify metrics exist for these periods; if missing, compute them
+        metric_count = session.scalar(
+            select(func.count(FinancialMetric.id)).where(
+                FinancialMetric.period_id.in_([p.id for p in periods])
+            )
+        ) or 0
+        if metric_count == 0:
+            from app.services.finance.metrics import compute_all_metrics
+            compute_all_metrics(session, organization_id)
+            session.flush()
+
     periods.reverse()  # Chronological order
 
     period_summaries = []
@@ -107,8 +139,17 @@ def build_facts_payload(session: Session, organization_id: uuid.UUID) -> dict[st
         "binding_constraints_count": sum(1 for r in recs if r.binding_constraints),
     }
 
-    # Latest period KPIs
-    latest_p = period_summaries[-1] if period_summaries else {}
+    # Latest period KPIs and sequential deltas
+    latest_p = dict(period_summaries[-1]) if period_summaries else {}
+    if len(period_summaries) >= 2:
+        prev_p = period_summaries[-2]
+        latest_p["prev_gross_margin_pct"] = prev_p["gross_margin_pct"]
+        latest_p["gross_margin_delta_pct"] = round(
+            latest_p["gross_margin_pct"] - prev_p["gross_margin_pct"], 1
+        )
+    elif latest_p:
+        latest_p["prev_gross_margin_pct"] = latest_p["gross_margin_pct"]
+        latest_p["gross_margin_delta_pct"] = 0.0
 
     return {
         "organization_id": str(organization_id),
@@ -126,20 +167,35 @@ def _generate_grounded_template_narrative(facts: dict[str, Any]) -> tuple[str, l
     pricing = facts.get("pricing_impact", {})
     anomalies = facts.get("anomalies", [])
 
+    if not latest:
+        narrative = (
+            "Executive Strategic Briefing:\n\n"
+            "Trailing financial statements have not yet been ingested for this enterprise. "
+            "Ingest or seed statement line items to calculate portfolio gross margin, operational runway, "
+            "and working capital indicators."
+        )
+        recommendations = [
+            {
+                "priority": "High",
+                "category": "Data Governance",
+                "action": "Seed or upload quarterly financial statements to activate real-time CFO intelligence.",
+                "expected_impact": "Establish baseline visibility over runway and margins",
+            }
+        ]
+        return narrative, recommendations
+
     period_label = latest.get("period", "Current Period")
-    gm = latest.get("gross_margin_pct", 30.0)
-    ebitda = latest.get("ebitda_margin_pct", 10.0)
-    runway = latest.get("runway_months", 18.0)
-    ccc = latest.get("ccc_days", 45.0)
-    cac = latest.get("cac", 150.0)
-    ltv = latest.get("ltv", 450.0)
+    gm = latest.get("gross_margin_pct", 0.0)
+    ebitda = latest.get("ebitda_margin_pct", 0.0)
+    runway = latest.get("runway_months", 0.0)
+    ccc = latest.get("ccc_days", 0.0)
+    cac = latest.get("cac", 0.0)
+    ltv = latest.get("ltv", 0.0)
+    prev_gm = latest.get("prev_gross_margin_pct", gm)
+    gm_shift = latest.get("gross_margin_delta_pct", 0.0)
 
     pricing_lift = pricing.get("projected_portfolio_margin_lift_pct", 0.0)
     recs_count = pricing.get("pending_recommendations_count", 0)
-
-    # Calculate sequential GM shift if trailing exists
-    prev_gm = trailing[-2].get("gross_margin_pct", gm) if len(trailing) >= 2 else gm
-    gm_shift = round(gm - prev_gm, 1)
 
     narrative_paragraphs = [
         f"Executive Strategic Briefing ({period_label}):",

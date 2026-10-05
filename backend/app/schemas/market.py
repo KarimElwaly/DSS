@@ -55,6 +55,10 @@ class ListingOut(ORMModel):
     latest: LatestObservation | None = None
 
 
+# Backward-compatible aliases
+CompetitorListingOut = ListingOut
+
+
 class PriceObservationOut(ORMModel):
     observed_at: dt.datetime
     price: float
@@ -85,6 +89,10 @@ class MarketSnapshot(BaseModel):
     n_listings: int
     n_out_of_stock: int
     points: list[CompetitorPricePoint]
+
+
+# Backward-compatible aliases
+MarketSnapshotOut = MarketSnapshot
 
 
 class AlertOut(ORMModel):

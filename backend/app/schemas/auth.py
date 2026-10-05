@@ -29,3 +29,13 @@ class UserOut(ORMModel):
     full_name: str
     role: UserRole
     organization_id: uuid.UUID
+
+
+class TokenPayload(BaseModel):
+    sub: str | None = None
+    exp: int | None = None
+
+
+# Backward-compatible aliases
+Token = TokenResponse
+UserLogin = LoginRequest

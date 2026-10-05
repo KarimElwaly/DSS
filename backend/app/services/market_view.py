@@ -67,6 +67,11 @@ class MarketPosition:
         return float(math.exp(sum(math.log(p) for p in prices) / len(prices)))
 
     @property
+    def competitor_price_index(self) -> float | None:
+        """Alias for price_index."""
+        return self.price_index
+
+    @property
     def cheapest(self) -> CompetitorPrice | None:
         candidates = self.in_stock_points or self.points
         return min(candidates, key=lambda p: p.landed_price, default=None)

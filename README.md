@@ -143,10 +143,12 @@ Copy-Item .env.example .env
 # 2. Start PostgreSQL container with pgvector
 docker compose -f infra/docker-compose.yml up -d postgres
 
-# 3. Setup Backend
-cd backend
-python -m venv .venv
+# 3. Setup & Activate Backend Virtual Environment
+# From project root (D:\projects\DSS):
 .\.venv\Scripts\Activate.ps1
+
+# (Or if already inside the backend directory: ..\.venv\Scripts\Activate.ps1)
+cd backend
 pip install -e ".[dev]"
 alembic upgrade head
 
@@ -222,10 +224,10 @@ This runs:
 
 The frontend provides dedicated decision-support screens for every operational persona:
 
-* **[Executive Overview](file:///d:/projects/DSS/frontend/app/page.tsx)** (`/`): High-level KPIs, revenue & margin trajectories, catalog health, active alerts.
+* **[Executive Overview](file:///d:/projects/DSS/frontend/app/page.tsx)** (`/`): High-level KPIs, revenue & margin trajectories, catalog health, active alerts, and top/all SKU market deviation toggle.
 * **[Product Catalog](file:///d:/projects/DSS/frontend/app/catalog/page.tsx)** (`/catalog`): Searchable catalog, unit costs, pricing margins, stock states.
 * **[Market Watch](file:///d:/projects/DSS/frontend/app/market/page.tsx)** (`/market`): Competitor price index tracker, competitor landed prices, out-of-stock monitor.
-* **[Match Review Queue](file:///d:/projects/DSS/frontend/app/listings/page.tsx)** (`/listings`): Human-in-the-loop review of uncertain product matches (approve, reassign, reject).
+* **[Match Review Queue](file:///d:/projects/DSS/frontend/app/listings/page.tsx)** (`/listings`): Human-in-the-loop review of competitor listings (auto-accepted, pending, needs review, confirmed, rejected).
 * **[SKU Workbench](file:///d:/projects/DSS/frontend/app/workbench/page.tsx)** (`/workbench`): Econometric demand curves, 90% confidence intervals, price variation diagnostics, 30-day Holt-Winters ETS forward forecast.
 * **[Price Recommendations](file:///d:/projects/DSS/frontend/app/recommendations/page.tsx)** (`/recommendations`): Constrained price recommendations under Margin/Revenue/Penetration objectives, binding guardrails, recommendation lifecycle (approve/reject/apply).
 * **[Scenario Sandbox](file:///d:/projects/DSS/frontend/app/sandbox/page.tsx)** (`/sandbox`): Interactive what-if pricing experiments with Monte Carlo fan charts and competitor reaction modeling.
@@ -236,6 +238,9 @@ The frontend provides dedicated decision-support screens for every operational p
 ## API Sitemap (`/api`)
 
 ```
+System & Health:
+  GET  /api/health                      - Service health status and version
+
 Authentication:
   POST /api/auth/login                  - Issue JWT access token
   GET  /api/auth/me                     - Current authenticated user context
@@ -243,32 +248,44 @@ Authentication:
 Catalog & Competitive Intelligence (Module A):
   GET  /api/catalog/products            - List products with margins and stock state
   GET  /api/catalog/products/{id}       - Product details with competitor summary
+  GET  /api/catalog/categories          - Category hierarchy
   GET  /api/market/competitors          - List competitors and listing counts
-  GET  /api/market/listings             - Competitor listings and match statuses
-  POST /api/market/listings/{id}/action - Human-in-the-loop match review (approve/reject)
+  GET  /api/market/snapshot             - Real-time catalog price gap vs competitor indices
+  GET  /api/market/listings             - Competitor listings with case-insensitive status filters
+  GET  /api/market/listings/{id}/history - Historical price observation timeseries
   GET  /api/market/alerts               - Open competitive intelligence alerts
+  POST /api/market/alerts/{id}/status   - Acknowledge or resolve an alert
+
+Matching & Human Review (Module A):
+  GET  /api/matching/review             - Review queue for uncertain matches
+  POST /api/matching/{id}/confirm       - Human confirm listing match to SKU
+  POST /api/matching/{id}/reject        - Reject proposed match
+  POST /api/matching/{id}/rematch       - Trigger on-demand re-embedding match
+  POST /api/matching/trigger            - Run batch matching pipeline
 
 Econometrics & Demand Forecasting (Module B):
-  GET  /api/analytics/elasticity        - Recovered elasticity estimates & 90% CIs
+  POST /api/analytics/elasticity/fit    - Fit log-log OLS models with HC3 robust CIs
+  GET  /api/analytics/elasticity        - Champion elasticity estimates across catalog
   GET  /api/analytics/elasticity/{id}   - Product-level elasticity and cross-terms
-  POST /api/analytics/elasticity/fit    - Trigger log-log OLS model fitting run
-  GET  /api/analytics/forecast/{id}     - 30-day Holt-Winters ETS demand forecast
-  POST /api/analytics/forecast/run      - Execute forward forecast & backtest run
+  GET  /api/analytics/workbench/{id}    - Complete SKU workbench (demand curve + forecast)
+  POST /api/analytics/forecast/fit      - Execute forward ETS demand forecast
+  GET  /api/analytics/forecast/{id}     - Retrieve 30-day forecast points
 
 Pricing Optimization & Sandbox (Modules C & D):
-  GET  /api/pricing/recommendations     - Generated price recommendations
+  GET  /api/pricing/recommendations     - Current generated price recommendations
   POST /api/pricing/recommendations/generate - Run optimization under objective
   POST /api/pricing/recommendations/{id}/action - Lifecycle decision (approve/reject/apply)
-  GET  /api/pricing/simulations         - List scenario simulation runs
-  POST /api/pricing/simulations/run     - Launch Monte Carlo what-if simulation
+  GET  /api/pricing/sandbox/runs        - List historical what-if simulation runs
+  POST /api/pricing/sandbox/simulate    - Launch Monte Carlo what-if simulation
 
-Financial Performance & AI Advisor (Module F):
-  GET  /api/finance/periods             - Financial statement periods & line items
+Financial Performance & Grounded CFO Advisor (Module F):
   POST /api/finance/seed                - Seed 8 quarters of financial statements
-  GET  /api/finance/metrics             - Financial ratios (Margin, EBITDA, CAC, Runway)
-  GET  /api/finance/findings            - Robust z-score financial anomaly alerts
-  GET  /api/finance/reports             - List historical CFO advisor reports
-  POST /api/finance/reports/generate    - Synthesize grounded CFO advisor narrative
+  POST /api/finance/upload              - Ingest custom quarterly statement lines
+  GET  /api/finance/periods             - Statement periods with summary ratios
+  GET  /api/finance/periods/{id}        - Detailed period line items and KPIs
+  GET  /api/finance/findings            - Financial anomaly and variance findings
+  POST /api/finance/advisor/generate    - Synthesize 100% grounded CFO narrative
+  GET  /api/finance/advisor/latest      - Retrieve most recent verified executive briefing
 ```
 
 ---
